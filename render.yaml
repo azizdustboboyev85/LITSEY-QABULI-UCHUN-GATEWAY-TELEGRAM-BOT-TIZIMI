@@ -1,0 +1,24 @@
+databases:
+  - name: qabul-db
+    databaseName: qabul_db
+    user: qabul_user
+    plan: free # Bepul PostgreSQL rejasi
+
+services:
+  - type: web
+    name: qabul-chatbot
+    plan: free # Bepul Web Service rejasi
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qabul-db
+          property: connectionString
+      - key: BOT_TOKEN
+        sync: false # Render dashboard'da qo'lda kiritiladi
+        placeholder: "Bot tokenini kiriting (e.g. 8963866357:AA...)"
+      - key: GROUP_ID
+        sync: false # Render dashboard'da qo'lda kiritiladi
+        placeholder: "Guruh ID-sini kiriting (e.g. -1003980024297)"

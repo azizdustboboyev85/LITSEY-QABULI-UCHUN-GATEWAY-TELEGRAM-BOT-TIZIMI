@@ -1,9 +1,12 @@
 import asyncio
 import logging
 import sys
+import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.webhook.aiohttp_impl import SimpleRequestHandler, setup_application
+from aiohttp import web
 
 import config
 import database
@@ -37,7 +40,7 @@ async def main():
     logger.info("Qabul bot tizimi ishga tushmoqda...")
     
     # 1. Ma'lumotlar bazasini tekshirish va yaratish
-    logger.info("SQLite ma'lumotlar bazasi tekshirilmoqda...")
+    logger.info("Ma'lumotlar bazasi tekshirilmoqda...")
     database.init_db()
     
     # 2. Bot va Dispatcher obyektlarini yaratish
@@ -53,15 +56,58 @@ async def main():
     logger.info("Routerlar dispatcherga ulanmoqda...")
     dp.include_router(handlers.get_router())
     
-    # 4. Oldingi kelib tushgan xabarlarni o'chirib yuborish (webhook tozalash)
-    await bot.delete_webhook(drop_pending_updates=True)
+    # 4. Render.com webhook yoki mahalliy polling rejimini aniqlash
+    render_url = os.getenv("RENDER_EXTERNAL_URL")
     
-    # 5. Pollingni boshlash
-    logger.info("Bot muvaffaqiyatli ishga tushdi va xabarlarni tinglamoqda. 🚀")
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+    if render_url:
+        logger.info("Render.com muhiti aniqlandi. Webhook rejimi ishga tushmoqda...")
+        
+        # Webhook sozlamalari
+        webhook_path = "/webhook"
+        webhook_url = f"{render_url}{webhook_path}"
+        
+        # Webhookni o'rnatish
+        await bot.set_webhook(
+            url=webhook_url,
+            drop_pending_updates=True
+        )
+        
+        # aiohttp ilovasini yaratish
+        app = web.Application()
+        
+        # handler yaratish va uni aiohttp ga ulash
+        webhook_handler = SimpleRequestHandler(
+            dispatcher=dp,
+            bot=bot
+        )
+        webhook_handler.register(app, path=webhook_path)
+        
+        # setup_application clean startup/shutdown uchun
+        setup_application(app, dp, bot=bot)
+        
+        # Portni olish (Render PORT muhit o'zgaruvchisini beradi)
+        port = int(os.getenv("PORT", 10000))
+        
+        # Server runnerini sozlash
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        logger.info(f"Server {port}-portda ishlamoqda. Webhook manzili: {webhook_url}")
+        await site.start()
+        
+        # Server o'chib ketmasligi uchun eventni kutib turamiz
+        await asyncio.Event().wait()
+    else:
+        logger.info("Mahalliy (Local) muhit aniqlandi. Polling rejimi ishga tushmoqda...")
+        
+        # Oldingi webhookni o'chirib yuborish
+        await bot.delete_webhook(drop_pending_updates=True)
+        
+        logger.info("Bot muvaffaqiyatli ishga tushdi va xabarlarni tinglamoqda. 🚀")
+        try:
+            await dp.start_polling(bot)
+        finally:
+            await bot.session.close()
 
 if __name__ == "__main__":
     try:
