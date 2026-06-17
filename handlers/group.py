@@ -47,6 +47,23 @@ async def process_start_input(callback: CallbackQuery, bot: Bot):
     # 2. Mas'ul xodim uchun guruhda Forum Topic (Mavzu) yaratish yoki olish
     topic_id = database.get_staff_topic(staff_id)
     
+    # Agar mavzu ID bazada bo'lsa, uning mavjudligini (o'chib ketmaganini) tekshiramiz
+    if topic_id:
+        try:
+            # Mavzu mavjudligini tekshirish uchun uning ichida typing action yuboramiz
+            await bot.send_chat_action(
+                chat_id=config.GROUP_ID,
+                action="typing",
+                message_thread_id=topic_id
+            )
+        except Exception as e:
+            # Agar mavzu Telegram'dan o'chirib yuborilgan bo'lsa, "thread not found" xatoligi beradi
+            if "thread not found" in str(e).lower():
+                print(f"Eski mavzu ID ({topic_id}) topilmadi (o'chirilgan). Yangi mavzu yaratiladi.")
+                topic_id = None
+            else:
+                print(f"Mavzuni tekshirishda kutilmagan xato: {e}")
+
     if not topic_id:
         try:
             # Yangi mavzu yaratish
