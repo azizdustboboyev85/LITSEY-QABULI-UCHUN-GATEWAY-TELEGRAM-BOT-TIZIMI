@@ -429,3 +429,16 @@ def save_staff_topic(staff_id: int, message_thread_id: int, staff_name: str) -> 
             )
         conn.commit()
         cursor.close()
+
+def delete_application(student_id: int) -> None:
+    """O'quvchining arizasi va barcha hujjatlarini bazadan butunlay o'chirish (Reset uchun)."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        if IS_POSTGRES:
+            cursor.execute("DELETE FROM applications WHERE student_id = %s", (student_id,))
+            cursor.execute("DELETE FROM application_files WHERE student_id = %s", (student_id,))
+        else:
+            cursor.execute("DELETE FROM applications WHERE student_id = ?", (student_id,))
+            cursor.execute("DELETE FROM application_files WHERE student_id = ?", (student_id,))
+        conn.commit()
+        cursor.close()
