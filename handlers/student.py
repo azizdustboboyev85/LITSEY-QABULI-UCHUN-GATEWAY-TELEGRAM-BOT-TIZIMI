@@ -255,6 +255,16 @@ async def process_documents(message: Message, state: FSMContext):
         "Yana yuborishingiz mumkin. Tugatsangiz, pastdagi tugmani bosing."
     )
 
+@router.message(Command("reset"))
+async def reset_cmd(message: Message, state: FSMContext):
+    """O'quvchi o'z arizasini o'chirib, boshidan boshlashi uchun debug komanda."""
+    await state.clear()
+    database.delete_application(message.from_user.id)
+    await message.answer(
+        "🧹 <b>Sizning arizangiz va yuklangan hujjatlaringiz bazadan butunlay o'chirildi.</b>\n\n"
+        "Endi noldan boshlash uchun <b>/start</b> buyrug'ini yuborishingiz mumkin!"
+    )
+
 @router.message()
 async def process_student_reply(message: Message, bot: Bot):
     """
@@ -322,13 +332,3 @@ async def process_student_reply(message: Message, bot: Bot):
     except Exception as e:
         print(f"Xabarni guruhga yuborishda xatolik: {e}")
         await message.answer("❌ <b>Xabaringizni yuborishda muammo yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.</b>")
-
-@router.message(Command("reset"))
-async def reset_cmd(message: Message, state: FSMContext):
-    """O'quvchi o'z arizasini o'chirib, boshidan boshlashi uchun debug komanda."""
-    await state.clear()
-    database.delete_application(message.from_user.id)
-    await message.answer(
-        "🧹 <b>Sizning arizangiz va yuklangan hujjatlaringiz bazadan butunlay o'chirildi.</b>\n\n"
-        "Endi noldan boshlash uchun <b>/start</b> buyrug'ini yuborishingiz mumkin!"
-    )
